@@ -1,0 +1,31 @@
+#!/bin/bash
+
+loop_count = 0
+is_running = "running"
+
+for (( ; ; ))
+do
+  ((loop_count=loop_count+1))
+
+  docker_status=$(docker ps -a --format "{{.Names}}\t\t{{.Image}}\t\t{{.State}}" | grep xrpllabsofficial/xrpld:latest)
+
+#  echo -e "\n✅✅✅ Docker IP ✅✅✅"
+  docker_ip=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' rippled)
+
+#  echo -e "\n✅✅✅ Checking ledger status ✅✅✅"
+  rippled_ledger=$(docker exec rippled server_info | grep "complete_ledgers")
+
+  echo -e "✅✅✅ Status Report ✅✅✅"
+  echo -e "🐳 Docker Status ⏩ $docker_status"
+  echo -e "🐳 Docker IP ⏩ $docker_ip"
+  echo -e "🌊 Rippled Ledgers ⏩ $rippled_ledger" | xargs
+
+  if [[ "$$docker_status" != *"$is_running"* ]]; then
+    echo -e "\nDocker Not Running, exiting..."
+    break
+  fi
+
+  echo -e "\nSleeping 60s. NOTE: Infinite loop (#$loop_count) [hit CTRL+C to stop]\n😴"
+  sleep 60
+done
+
