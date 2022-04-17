@@ -1,0 +1,11 @@
+#!/bin/bash
+
+self(){
+  DIR=$( cd "$( dirname "$0" )/" && pwd)
+  echo $DIR
+}
+
+echo "Copying over configs"
+sudo cp $(self)/../config/* /opt/ripple/etc/
+
+echo "Done, you can now run $(self)/up"

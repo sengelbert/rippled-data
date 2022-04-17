@@ -1,0 +1,10 @@
+#!/bin/bash
+
+self(){
+  DIR=$( cd "$( dirname "$0" )/" && pwd)
+  echo $DIR
+}
+
+$(self)/down
+
+sudo systemctl start rippled.service
