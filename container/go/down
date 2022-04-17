@@ -1,0 +1,5 @@
+#!/bin/bash
+
+podman ps -a|grep xrpllabsofficial/xrpld:latest|cut -d " " -f 1 |xargs -I___ echo "echo 'Stopping container ___' && podman stop ___" | bash
+podman ps -a|grep xrpllabsofficial/xrpld:latest|cut -d " " -f 1 |xargs -I___ echo "echo 'Removing container ___' && podman rm ___" | bash
+podman system prune -a -f --filter "label=rippled"
