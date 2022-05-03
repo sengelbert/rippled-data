@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo -e "⚠⚠⚠ Deleting EC2 ⚠⚠⚠"
+aws cloudformation delete-stack --stack rippled
+
+sleep 300
+
+echo -e "⚠⚠⚠ Deleting VPC ⚠⚠⚠"
+aws cloudformation delete-stack --stack vpc

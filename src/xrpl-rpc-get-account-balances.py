@@ -5,6 +5,7 @@ import datetime
 
 from xrpl.models import LedgerData
 from xrpl.clients import JsonRpcClient
+from xrpl.ledger import get_latest_validated_ledger_sequence
 
 
 @click.command()
@@ -35,10 +36,11 @@ def process(host, port, api_limit, debug, ssl, ledger_count):
     # https://s.altnet.rippletest.net:51234/  #testnet
     # https://r.ripple.com:51235/  # prod
 
-    ledger_info = LedgerData()
-    ledger_response = client.request(ledger_info)
-    ledger_result = ledger_response.result
-    ledger = int(ledger_result["ledger_current_index"]) - 1
+    # ledger_info = LedgerData()
+    # ledger_response = client.request(ledger_info)
+    # ledger_result = ledger_response.result
+    # ledger = int(ledger_result["ledger_index"]) - 1
+    ledger = get_latest_validated_ledger_sequence(client)
     # print(ledger)
 
     # loop through API results
@@ -103,7 +105,7 @@ def process(host, port, api_limit, debug, ssl, ledger_count):
                 f"{record_count} total df count: {(total_df.size / 2)} "
                 f"total api call count: {call_count}\n")
             print(f"{debug_prefix}df count: {total_df.count()} account count: {record_count}") if debug else None
-        total_df.to_pickle(f"data/{ledger}_account_balances.pickle")
+        total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
         print(f"{debug_prefix} {total_df.describe()}") if debug else None
     ledger -= 1
 

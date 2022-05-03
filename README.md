@@ -1,5 +1,7 @@
 # rippled-data
 
+!!!!!! in dev, beware. README may not be fully accurate !!!!!!
+
 Simple python project for access data from rippled. Utilizes [docker-rippled from Wietse Wind](https://github.com/WietseWind/docker-rippled) for testing
 
 ## Local Docker

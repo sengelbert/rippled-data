@@ -1,0 +1,231 @@
+Description: 'Template to deploy XRPL rippled node'
+
+Parameters:
+  LatestAmiId:
+    Type:  'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+  KeyName:
+    Description: SSH Key Name
+    Type: String
+
+Resources:
+  RippleEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3a.xlarge
+      SecurityGroupIds:
+        - !GetAtt "RippleSecurityGroup.GroupId"
+      SubnetId: !ImportValue 'PublicSubnet1'
+      ImageId: !Ref 'LatestAmiId' #ami-0892d3c7ee96c0bf7
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 65
+            VolumeType: gp3
+            DeleteOnTermination: True
+            Iops: 8000
+      KeyName: !Ref 'KeyName'
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash -xe
+
+            ####### Start Ubuntu 20.04 #######
+
+            #sudo apt -y update
+            #sudo apt -y install apt-transport-https ca-certificates wget gnupg
+            #wget -q -O - "https://repos.ripple.com/repos/api/gpg/key/public" | sudo apt-key add -
+            #apt-key finger
+            #echo "deb https://repos.ripple.com/repos/rippled-deb focal stable" | sudo tee -a /etc/apt/sources.list.d/ripple.list
+
+            #sudo apt -y update
+            #sudo apt -y install rippled
+
+            #sudo setcap 'cap_net_bind_service=+ep' /opt/ripple/bin/rippled
+            
+            ####### End Ubuntu 20.04 #######
+            
+            ######## Start RHL / AL2 #######
+            
+            cat << REPOFILE | sudo tee /etc/yum.repos.d/ripple.repo
+            [ripple-stable]
+            name=XRP Ledger Packages
+            enabled=1
+            gpgcheck=0
+            repo_gpgcheck=1
+            baseurl=https://repos.ripple.com/repos/rippled-rpm/stable/
+            gpgkey=https://repos.ripple.com/repos/rippled-rpm/stable/repodata/repomd.xml.key
+            REPOFILE
+
+            sudo yum -y update
+            #sudo mkfs -t xfs /dev/nvme1n1
+            #sudo mkdir /data
+            #sudo mount /dev/nvme1n1 /data
+            #sudo ln -s /var/lib/rippled /data
+
+            sudo yum install -y rippled
+
+            ######## Stop RHL / AL2 #######
+            
+            ######## Start Set Configs #######
+            
+            sudo cp /etc/opt/ripple/rippled.cfg /etc/opt/ripple/rippled-original.cfg
+            
+            cat << CONFIG | sudo tee /etc/opt/ripple/rippled.cfg
+            [server]
+            port_rpc_admin_local
+            port_rpc_public
+            port_peer
+            port_ws_admin_local
+            port_ws_public
+            
+            [port_rpc_admin_local]
+            port = 5005
+            ip = 127.0.0.1
+            admin = 127.0.0.1
+            protocol = http
+            
+            [port_rpc_public]
+            port = 51234
+            ip = 0.0.0.0
+            protocol = http
+            
+            [port_peer]
+            port = 51235
+            ip = 0.0.0.0
+            protocol = peer
+            
+            [port_ws_admin_local]
+            port = 6006
+            ip = 127.0.0.1
+            admin = 127.0.0.1
+            protocol = ws
+            
+            [port_ws_public]
+            port = 6005
+            ip = 0.0.0.0
+            protocol = ws
+            
+            [node_size]
+            medium
+            
+            [ledger_history]
+            512
+            
+            [node_db]
+            type=NuDB
+            path=/var/lib/rippled/db/nudb
+            online_delete=512
+            advisory_delete=1
+            
+            [database_path]
+            /var/lib/rippled/db
+            
+            [debug_logfile]
+            /var/log/rippled/debug.log
+            
+            [sntp_servers]
+            time.windows.com
+            time.apple.com
+            time.nist.gov
+            pool.ntp.org
+            
+            [ips]
+            r.ripple.com 51235
+          
+            #[ips_fixed]
+            #s2.ripple.com 51235
+            
+            [validators_file]
+            validators.txt
+            
+            [rpc_startup]
+            { "command": "log_level", "severity": "warning" }
+
+            [ssl_verify]
+            1
+            
+            CONFIG
+          
+            sudo cp /etc/opt/ripple/validators.txt /etc/opt/ripple/validators-original.txt
+            
+            cat << VALIDATORS | sudo tee /etc/opt/ripple/validators.txt
+            [validator_list_sites]
+            https://vl.ripple.com
+
+            [validator_list_keys]
+            ED2677ABFFD1B33AC6FBC3062B71F1E8397C1505E1C42C64D11AD1B28FF73F4734
+          
+            VALIDATORS
+            
+            ######## Stop Set Configs #######
+            
+            ######## Start Start Service #######
+            
+            sudo systemctl daemon-reload
+            sudo systemctl enable rippled.service
+            sudo systemctl start rippled.service
+            sudo systemctl status rippled.service --no-pager
+            
+            ######## Stop Start Service #######
+            
+            ######## Start Setup Python #######
+            
+            sudo yum update -y
+            sudo yum groupinstall "Development Tools" -y
+            sudo yum install openssl11 openssl11-devel libffi-devel bzip2-devel wget python3.8 pip -y
+            
+            #sudo apt install python3-pip -y
+            
+            pip install pandas click datetime
+
+            ######## Stop Setup Python #######
+
+
+  RippleSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Traffic for Rippled
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 6005
+        ToPort: 6005
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 51234
+        ToPort: 51234
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 51235
+        ToPort: 51235
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+#      - IpProtocol: tcp
+#        FromPort: 22
+#        ToPort: 22
+#        CidrIp: 71.33.155.0/32
+#      - IpProtocol: tcp
+#        FromPort: 6005
+#        ToPort: 6005
+#        CidrIp: 0.0.0.0/0
+#      - IpProtocol: tcp
+#        FromPort: 51234
+#        ToPort: 51234
+#        CidrIp: 0.0.0.0/0
+#      - IpProtocol: tcp
+#        FromPort: 51235
+#        ToPort: 51235
+#        CidrIp: 0.0.0.0/0
+      VpcId: !ImportValue 'VPC'

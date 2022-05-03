@@ -4,16 +4,12 @@ import pandas as pd
 # pd.set_option('display.max_rows', None)  # or 1000
 # pd.set_option('display.max_colwidth', None)  # or 199
 
-df = pd.read_pickle('../data/account_balances.pickle')
+df = pd.read_pickle('../data/71124435_account_balances.pickle')
+print(df.size/2)
 
 df.sort_values(by=['balance'], inplace=True, ascending=False)
 df['rank_percent'] = df.balance.rank(pct=True)
 df['rank_number'] = df.balance.rank()
-
-# print(df[df['rank_percent'].between(.97, .96, inclusive="both")])
-# df_size = df.size
-# print(df_size)
-# print(df)
 
 rich_list = [
     {'rank_max': 100, 'rank_min': 99.99},

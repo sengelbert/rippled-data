@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo -e "✅✅✅ Deploying VPC ✅✅✅"
+aws cloudformation deploy --template-file ../vpc.yaml --stack vpc
+
+echo -e "✅✅✅ Deploying EC2 ✅✅✅"
+# needs dev key-pair created and stored on machine
+aws cloudformation deploy --template-file ../ec2.yaml --stack rippled --parameter-overrides KeyName=dev

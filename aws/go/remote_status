@@ -1,0 +1,28 @@
+#!/bin/bash
+
+loop_count=0
+is_running="running"
+
+for (( ; ; ))
+do
+  ((loop_count=loop_count+1))
+
+#  service_status=$(systemctl -H ec2-user@$1 status httpd.service | grep "Active:")
+#  service_status=$(sudo systemctl status rippled.service | grep "Active:")
+
+  rippled_ledger=$(curl -X POST --data '{"method": "server_info", "params": [{}]}' -H 'content-type:application/json;' http://$1:51234 | grep "complete_ledgers")
+#  rippled_ledger=$(sudo /opt/ripple/bin/rippled server_info | grep "complete_ledgers")
+
+  echo -e "✅✅✅ Status Report ✅✅✅"
+#  echo -e "🐳 Service Status ⏩ $service_status"
+  echo -e "🌊 Rippled Ledgers ⏩ $rippled_ledger" | xargs
+
+#  if [[ "$service_status" != *"$is_running"* ]]; then
+#    echo -e "\nService Not Running, exiting..."
+#    break
+#  fi
+
+  echo -e "\nSleeping 60s. NOTE: Infinite loop (#$loop_count) [hit CTRL+C to stop]\n😴"
+  sleep 60
+done
+
