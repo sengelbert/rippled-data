@@ -88,17 +88,17 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
                 f"total record count: {record_count} total "
                 f"api call count: {call_count}") if debug else None
             for acct in ledger_result["state"]:
-                if "Account" in acct:
-                    if acct["LedgerEntryType"] == "AccountRoot":
-                        if "Balance" in acct:
-                            record_count += 1
-                            result = {"account": acct["Account"], "balance": acct["Balance"]}
-                            account_list.append(result)
-                            print(
-                                f"{debug_prefix}ledger: {ledger} account: {acct['Account']} "
-                                f"type: {acct['LedgerEntryType']} "
-                                f"balance: {acct['Balance']} count: {record_count}") \
-                                if debug else None
+                if acct["LedgerEntryType"] == "AccountRoot":
+                    # if "Account" in acct:
+                    #     if "Balance" in acct:
+                    record_count += 1
+                    result = {"account": acct["Account"], "balance": acct["Balance"]}
+                    account_list.append(result)
+                    print(
+                        f"{debug_prefix}ledger: {ledger} account: {acct['Account']} "
+                        f"type: {acct['LedgerEntryType']} "
+                        f"balance: {acct['Balance']} count: {record_count}") \
+                        if debug else None
             # working_df = pd.read_json(json.dumps(account_list))
             # total_df = pd.concat([working_df, total_df], sort=False)
             data.write(json.dumps(account_list))
