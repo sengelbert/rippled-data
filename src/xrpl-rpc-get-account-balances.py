@@ -11,13 +11,13 @@ from xrpl.ledger import get_latest_validated_ledger_sequence
 @click.command()
 @click.option('-h', '--host', default='127.0.0.1', help='JSON RPC Host')
 @click.option('-p', '--port', default='51234', help='JSON RPC Host Port')
-@click.option('-l', '--api_limit', default=20000, help='API Pagination Limit')
+@click.option('-a', '--api_limit', default=20000, help='API Pagination Limit')
 @click.option('-d', '--debug', is_flag=True, help='Setup Debugging Output')
 @click.option('-s', '--ssl', is_flag=True, help='Use SSL or not')
 @click.option('-c', '--ledger_count', default=1, help='how many ledgers to collect')
-def process(host, port, api_limit, debug, ssl, ledger_count):
-    # log to loggy
-    log = open(f'../log/loggy.log', 'w')
+@click.option('-l', '--logging', is_flag=True, help='Log?')
+def process(host, port, api_limit, debug, ssl, ledger_count, logging):
+
 
     # set some variables
     record_count = 0
@@ -42,6 +42,11 @@ def process(host, port, api_limit, debug, ssl, ledger_count):
     # ledger = int(ledger_result["ledger_index"]) - 1
     ledger = get_latest_validated_ledger_sequence(client)
     # print(ledger)
+
+    # log to loggy
+    log = open(f'../log/{ledger}_loggy.log', 'w')
+    # log to data
+    data = open(f'../data/{ledger}_account_balances.json', 'w')
 
     # loop through API results
     for i in range(ledger_count):
@@ -84,28 +89,27 @@ def process(host, port, api_limit, debug, ssl, ledger_count):
                 f"api call count: {call_count}") if debug else None
             for acct in ledger_result["state"]:
                 if "Account" in acct:
-                    if "LedgerEntryType" in acct:
+                    if acct["LedgerEntryType"] == "AccountRoot":
                         if "Balance" in acct:
-                            account = acct["Account"]
-                            account_balance = acct["Balance"]
-                            account_ledger_entry_type = acct["LedgerEntryType"]
-                            if account_ledger_entry_type == "AccountRoot":
-                                record_count += 1
-                                result = {"account": account, "balance": account_balance}
-                                account_list.append(result)
-                                print(
-                                    f"{debug_prefix}account: {account} type: {account_ledger_entry_type} "
-                                    f"count: {record_count}") \
-                                    if debug else None
-            working_df = pd.read_json(json.dumps(account_list))
-            total_df = pd.concat([working_df, total_df], sort=False)
+                            record_count += 1
+                            result = {"account": acct["Account"], "balance": acct["Balance"]}
+                            account_list.append(result)
+                            print(
+                                f"{debug_prefix}ledger: {ledger} account: {acct['Account']} "
+                                f"type: {acct['LedgerEntryType']} "
+                                f"balance: {acct['Balance']} count: {record_count}") \
+                                if debug else None
+            # working_df = pd.read_json(json.dumps(account_list))
+            # total_df = pd.concat([working_df, total_df], sort=False)
+            data.write(json.dumps(account_list))
             log.write(
                 f"date: {datetime.datetime.now()} ledger: {ledger} current marker: {last_marker_val} "
                 f"next marker: {marker_val} total record count: "
                 f"{record_count} total df count: {(total_df.size / 2)} "
-                f"total api call count: {call_count}\n")
-            print(f"{debug_prefix}df count: {total_df.count()} account count: {record_count}") if debug else None
-        total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
+                f"total api call count: {call_count}\n") if logging else None
+            print(f"ledger: {ledger} account count: {record_count} "
+                  f"total api call count: {call_count}") if not logging else None
+        # total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
         print(f"{debug_prefix} {total_df.describe()}") if debug else None
     ledger -= 1
 

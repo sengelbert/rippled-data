@@ -13,7 +13,7 @@ Resources:
   RippleEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t3a.xlarge
+      InstanceType: t3a.2xlarge
       SecurityGroupIds:
         - !GetAtt "RippleSecurityGroup.GroupId"
       SubnetId: !ImportValue 'PublicSubnet1'
@@ -177,7 +177,12 @@ Resources:
             
             #sudo apt install python3-pip -y
             
-            pip install pandas click datetime
+            curl -0 https://bootstrap.pypa.io/get-pip.py > get-pip.py
+            python3 get-pip.py --user
+            export PATH=~/.local/bin:$PATH
+            source ~/.bash_profile
+            
+            pip3 install pandas click datetime xrpl-py
 
             ######## Stop Setup Python #######
 
