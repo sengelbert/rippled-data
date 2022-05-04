@@ -182,7 +182,7 @@ Resources:
             export PATH=~/.local/bin:$PATH
             source ~/.bash_profile
             
-            pip3 install pandas click datetime xrpl-py
+            pip3 install pandas click datetime xrpl-py os
 
             ######## Stop Setup Python #######
 

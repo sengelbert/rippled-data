@@ -1,7 +1,7 @@
 import json
-import pandas as pd
 import click
 import datetime
+import os
 
 from xrpl.models import LedgerData
 from xrpl.clients import JsonRpcClient
@@ -24,7 +24,6 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
     call_count = 0
     paginate = True
     marker_val = None
-    total_df = pd.DataFrame()
     debug_prefix = "DEBUG: "
 
     print(f"{debug_prefix}debug is on") if debug else None
@@ -45,8 +44,6 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
 
     # log to loggy
     log = open(f'../log/{ledger}_loggy.log', 'w') if logging else None
-    # log to data
-    data = open(f'../data/{ledger}_account_balances.json', 'w')
 
     # loop through API results
     for i in range(ledger_count):
@@ -66,6 +63,9 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
             print(f"{debug_prefix}{ledger_result}") if debug else None
             account_list = []
             call_count += 1
+            # open data file
+            os.makedirs(f'../data/{ledger}/', exist_ok=True)
+            data = open(f'../data/{ledger}/{call_count}_account_balances.json', 'w')
             if "marker" in ledger_result:
                 last_marker_val = marker_val
                 marker_val = ledger_result["marker"]
@@ -96,8 +96,7 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
             log.write(
                 f"date: {datetime.datetime.now()} ledger: {ledger} current marker: {last_marker_val} "
                 f"next marker: {marker_val} total record count: "
-                f"{record_count} total df count: {(total_df.size / 2)} "
-                f"total api call count: {call_count}\n") if logging else None
+                f"{record_count} total api call count: {call_count}\n") if logging else None
             print(f"ledger: {ledger} account count: {record_count} "
                   f"total api call count: {call_count}") if not logging else None
         # total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")

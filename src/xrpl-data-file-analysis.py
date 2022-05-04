@@ -5,26 +5,29 @@ import os
 # pd.set_option('display.max_rows', None)  # or 1000
 # pd.set_option('display.max_colwidth', None)  # or 199
 
-# df = pd.concat([pd.read_pickle(r'location/'+x) for x in os.listdir('location)])
+directory = '../data/test'
 
-directory = '../data/71247480'
-for file in os.listdir(directory):
-    filename = os.path.join(directory, file)
-    if os.path.isfile(filename):
-        print(filename)
+df = pd.concat([pd.read_json(f"{directory}/"+x) for x in os.listdir(directory)])
+print(df.size/2)
 
-df = pd.read_pickle('../data/71247480/11111_ledger.pickle')
+# directory = '../data/test'
+# for file in os.listdir(directory):
+#     filename = os.path.join(directory, file)
+#     if os.path.isfile(filename):
+#         print(filename)
 #
-count = 0
-for index, row in df.iterrows():
-    # print(row)
-    # print(index)
-    if pd.notnull(row['Account']) and row['LedgerEntryType'] == 'AccountRoot':
-        count += 1
-        print(row['Account'])
-        print(row['LedgerEntryType'])
-        print(row['Balance'])
-        print(count)
+# df = pd.read_pickle('../data/71247480/11111_ledger.pickle')
+# #
+# count = 0
+# for index, row in df.iterrows():
+#     # print(row)
+#     # print(index)
+#     if pd.notnull(row['Account']) and row['LedgerEntryType'] == 'AccountRoot':
+#         count += 1
+#         print(row['Account'])
+#         print(row['LedgerEntryType'])
+#         print(row['Balance'])
+#         print(count)
 
 
 # df.sort_values(by=['balance'], inplace=True, ascending=False)
