@@ -55,22 +55,13 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
         while paginate:
             if marker_val is None:
                 print(f"{debug_prefix}marker is empty") if debug else None
-                ledger_info = LedgerData(
-                    ledger_index=ledger,
-                    limit=int(api_limit)
-                )
-                ledger_response = client.request(ledger_info)
-                ledger_result = ledger_response.result
+                ledger_result = client.request(LedgerData(ledger_index=ledger, limit=int(api_limit)))
+
             else:
                 print(f"{debug_prefix}marker NOT is empty") if debug else None
-                ledger_info = LedgerData(
-                    ledger_index=ledger,
-                    marker=marker_val,
-                    limit=int(api_limit)
-                )
-                ledger_response = client.request(ledger_info)
-                ledger_result = ledger_response.result
+                ledger_result = client.request(LedgerData(ledger_index=ledger, marker=marker_val, limit=int(api_limit)))
 
+            ledger_result = ledger_result.result
             # print(ledger_result)
             print(f"{debug_prefix}{ledger_result}") if debug else None
             account_list = []
