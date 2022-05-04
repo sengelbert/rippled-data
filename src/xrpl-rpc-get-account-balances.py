@@ -44,7 +44,7 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
     # print(ledger)
 
     # log to loggy
-    log = open(f'../log/{ledger}_loggy.log', 'w')
+    log = open(f'../log/{ledger}_loggy.log', 'w') if logging else None
     # log to data
     data = open(f'../data/{ledger}_account_balances.json', 'w')
 
@@ -110,7 +110,7 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
             print(f"ledger: {ledger} account count: {record_count} "
                   f"total api call count: {call_count}") if not logging else None
         # total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
-        print(f"{debug_prefix} {total_df.describe()}") if debug else None
+        # print(f"{debug_prefix} {total_df.describe()}") if debug else None
     ledger -= 1
 
 

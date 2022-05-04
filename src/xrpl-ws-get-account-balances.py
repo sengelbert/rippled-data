@@ -37,7 +37,9 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
     with WebsocketClient(connection_string) as client:
         ledger = get_latest_validated_ledger_sequence(client)
         # log to loggy
-        log = open(f"../log/{ledger}_loggy.log", 'w') if logging else None
+        log = open(f'../log/{ledger}_loggy.log', 'w') if logging else None
+        # log to data
+        data = open(f'../data/{ledger}_account_balances.json', 'w')
         while paginate:
             if marker_val is None:
                 print(f"{debug_prefix}marker is empty") if debug else None
@@ -76,8 +78,9 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
                         f"type: {acct['LedgerEntryType']} "
                         f"balance: {acct['Balance']} count: {record_count}") \
                         if debug else None
-            working_df = pd.read_json(json.dumps(account_list))
-            total_df = pd.concat([working_df, total_df], sort=False)
+            # working_df = pd.read_json(json.dumps(account_list))
+            # total_df = pd.concat([working_df, total_df], sort=False)
+            data.write(json.dumps(account_list))
             log.write(
                 f"date: {datetime.datetime.now()} ledger: {ledger} current marker: {last_marker_val} "
                 f"next marker: {marker_val} total record count: "
@@ -86,8 +89,8 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
             print(f"ledger: {ledger} account count: {record_count} "
                   f"total api call count: {call_count}") if not logging else None
         # total_df = pd.read_json(json.dumps(account_list))
-        total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
-        print(f"{debug_prefix} {total_df.describe()}") if debug else None
+        # total_df.to_pickle(f"../data/{ledger}_account_balances.pickle")
+        # print(f"{debug_prefix} {total_df.describe()}") if debug else None
 
 
 if __name__ == '__main__':
