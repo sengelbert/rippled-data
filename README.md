@@ -36,7 +36,7 @@ From in the /src/ dir run...
       2. Ledger data to /data/ledger-data
    3. Logs, if enabled are written to /log
 
-### Data Analysis
+## Data Analysis
 Processing of a full ledger must complete
 
 From in the /src/ dir run...
