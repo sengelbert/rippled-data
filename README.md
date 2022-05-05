@@ -1,4 +1,5 @@
 # rippled-data
+👷👷👷 Work in progress 👷👷👷
 
 Simple python project for collecting and analyzing data from rippled. Basically was a project to emulate the XRP Rich-List in Python.
 
@@ -9,20 +10,20 @@ Utilizes [docker-rippled from Wietse Wind](https://github.com/WietseWind/docker-
 
 ### Local Docker/Podman
 From in the /docker/go/ or /podman/go/ dir run...
-1. ./build
-2. ./up
-3. ./status (from another terminal window and once completed_ledgers is not empty)
+1. ```./build```
+2. ```./up```
+3. ```./status``` (from another terminal window and once completed_ledgers is not empty)
 
 ### Local Server (aka running under systemctl)
 From in the /server/go/ dir run...
-1. ./build
-2. ./up
-3. ./status (from another terminal window and once completed_ledgers is not empty)
+1. ```./build```
+2. ```./up```
+3. ```./status``` (from another terminal window and once completed_ledgers is not empty)
 
 ### AWS
 From in the /aws/go/ dir run...
-1. ./up (deploys vpc and EC2 instance, including installing rippled service and running it)
-2. ./remote_status (to get ledger status)
+1. ```./up``` (deploys vpc and EC2 instance, including installing rippled service and running it)
+2. ```./remote_status``` (to get ledger status)
 Jump on the EC2 instance to run other commands, scripts, etc
 
 ## Data Collection
