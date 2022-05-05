@@ -5,7 +5,7 @@ import datetime
 
 from xrpl.models import LedgerData
 from xrpl.clients import JsonRpcClient
-
+from xrpl.ledger import get_latest_validated_ledger_sequence
 
 @click.command()
 @click.option('-h', '--host', default='127.0.0.1', help='JSON RPC Host')
@@ -15,7 +15,7 @@ from xrpl.clients import JsonRpcClient
 @click.option('-s', '--ssl', is_flag=True, help='Use SSL or not')
 def process(host, port, api_limit, debug, ssl):
     # log to sample
-    log = open(f'../log/sample.log', 'w')
+    data = open(f'./ledger-data.json', 'w')
 
     debug_prefix = "DEBUG: "
 
@@ -27,16 +27,13 @@ def process(host, port, api_limit, debug, ssl):
     client = JsonRpcClient(connection_string)  # local
     # https://s.altnet.rippletest.net:51234/  #testnet
     # https://r.ripple.com:51235/  # prod
-
-    ledger_info = LedgerData(
-        ledger_index=71010651,
-        limit=int(api_limit)
-    )
+    ledger = get_latest_validated_ledger_sequence(client)
+    ledger_info = LedgerData(ledger_index=ledger, limit=int(api_limit))
     ledger_response = client.request(ledger_info)
     ledger_result = ledger_response.result
     json_sample = json.dumps(ledger_result, indent=2)
     print(json_sample)
-    log.write(json_sample)
+    data.write(json_sample)
 
 
 if __name__ == '__main__':

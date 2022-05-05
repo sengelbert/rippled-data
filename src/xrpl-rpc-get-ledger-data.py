@@ -35,13 +35,10 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
     # https://s.altnet.rippletest.net:51234/  #testnet
     # https://r.ripple.com:51235/  # prod
 
-    # ledger_info = LedgerData()
-    # ledger_response = client.request(ledger_info)
-    # ledger_result = ledger_response.result
-    # ledger = int(ledger_result["ledger_index"]) - 1
     ledger = get_latest_validated_ledger_sequence(client)
-    # print(ledger)
-
+    os.makedirs(f'../data/{ledger}/', exist_ok=True)
+    os.makedirs(f'../data/{ledger}/ledger-data/', exist_ok=True)
+    os.makedirs(f'../data/{ledger}/ledger/', exist_ok=True)
     # log to loggy
     log = open(f'../log/{ledger}_loggy.log', 'w') if logging else None
 
@@ -61,11 +58,13 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
             ledger_result = ledger_result.result
             # print(ledger_result)
             print(f"{debug_prefix}{ledger_result}") if debug else None
+            if call_count == 0:
+                ledger_data = open(f'../data/{ledger}/ledger/ledger.json', 'w')
+                ledger_data.write(json.dumps([ledger_result["ledger"]]))
             account_list = []
             call_count += 1
             # open data file
-            os.makedirs(f'../data/{ledger}/', exist_ok=True)
-            data = open(f'../data/{ledger}/{call_count}_account_balances.json', 'w')
+            data = open(f'../data/{ledger}/ledger-data/{call_count}_account_balances.json', 'w')
             if "marker" in ledger_result:
                 last_marker_val = marker_val
                 marker_val = ledger_result["marker"]
@@ -80,8 +79,6 @@ def process(host, port, api_limit, debug, ssl, ledger_count, logging):
                 f"api call count: {call_count}") if debug else None
             for acct in ledger_result["state"]:
                 if acct["LedgerEntryType"] == "AccountRoot":
-                    # if "Account" in acct:
-                    #     if "Balance" in acct:
                     record_count += 1
                     result = {"account": acct["Account"], "balance": acct["Balance"]}
                     account_list.append(result)
