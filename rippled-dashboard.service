@@ -1,0 +1,13 @@
+[Unit]
+Description=XRPL Rich-List & Holdings Streamlit Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/simon/Code/Personal/rippled-data
+ExecStart=/home/simon/Code/Personal/rippled-data/.venv/bin/streamlit run src/dashboard.py --server.address 0.0.0.0 --server.port 8502 --server.headless true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
