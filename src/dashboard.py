@@ -18,6 +18,10 @@ from xrpl_analytics import (
     fetch_raw_data,
     fetch_wallet_raw,
 )
+from whale_flow_study import (
+    fetch_90d_dataset,
+    run_90d_study_and_backtest,
+)
 
 st.set_page_config(
     page_title="XRPL Rich-List & Holdings Dashboard",
@@ -36,6 +40,13 @@ def load_global_raw_data() -> dict:
 def load_wallet_lookup(address: str) -> dict:
     """Fetch and cache individual XRPL wallet lookup for 60 seconds."""
     return asyncio.run(fetch_wallet_raw(account=address.strip()))
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_whale_flow_study() -> dict:
+    """Fetch and compute the 90-day XRPL whale flow study and strategy backtest."""
+    ds = asyncio.run(fetch_90d_dataset(days=90, min_xrp=1_000_000, use_cache=True))
+    return run_90d_study_and_backtest(ds)
 
 
 def determine_balance_tier(balance_xrp: float) -> str:
@@ -308,11 +319,12 @@ g4.metric("Locked in Escrow", f"{s.escrow_xrp:,.0f} XRP", delta=f"{escrow_pct:.2
 g5.metric("Snapshot Timestamp", str(s.close_time)[:19].replace("T", " "))
 
 # --- Main Analytics Tabs ---
-tab_percentiles, tab_distribution, tab_whales = st.tabs(
+tab_percentiles, tab_distribution, tab_whales, tab_backtest = st.tabs(
     [
         "📊 Rich-List Percentile Brackets",
         "⚖️ Balance Tiers & Supply Distribution",
         "🐋 Top Entities & Whale Leaderboard",
+        "🧪 90-Day Whale Flow & Backtest",
     ]
 )
 
@@ -554,3 +566,127 @@ with tab_whales:
             ]
         )
         st.dataframe(df_liq, use_container_width=True, hide_index=True)
+
+with tab_backtest:
+    st.markdown("#### 🧪 90-Day On-Chain Whale Flow Event Study & Strategy Backtest ($\ge 1,000,000\text{ XRP}$ Payments)")
+    with st.spinner("Loading 90-day XRPL whale payments & 1H XRP/USD backtest..."):
+        study = load_whale_flow_study()
+
+    b_col1, b_col2, b_col3, b_col4 = st.columns(4)
+    noise_pct = study["flow_summary"].get("INTERNAL_NOISE", {}).get("pct_of_volume", 0.0) + study[
+        "flow_summary"
+    ].get("WHALE_TRANSFER", {}).get("pct_of_volume", 0.0)
+    b_col1.metric("90D Whale Payments (>=1M XRP)", f"{study['total_tx_count']:,}")
+    b_col2.metric("Total Whale Volume (90D)", f"{study['total_xrp_moved']:,.0f} XRP")
+    b_col3.metric("Non-Directional Shuffling / Noise", f"{noise_pct:.1f}% of volume")
+    b_col4.metric("90D Buy & Hold Benchmark", f"{study['buy_and_hold_return_pct']:+.2f}%")
+
+    # Backtest Comparison Table
+    st.markdown("##### 1. Strategy Backtest Comparison ($10,000 Initial Capital, 1H XRP/USD Bars, 10 bps Fee)")
+    df_bt = pd.DataFrame(study["backtest_metrics"])
+    df_bt_disp = pd.DataFrame(
+        [
+            {
+                "Strategy Variant": r["strategy_name"],
+                "Trades": r["total_trades"],
+                "Win Rate": f"{r['win_rate_pct']:.1f}%",
+                "Net Return": f"{r['total_return_pct']:+.2f}%",
+                "Max Drawdown": f"-{r['max_drawdown_pct']:.2f}%",
+                "Profit Factor": f"{r['profit_factor']:.2f}",
+                "Sharpe Ratio": f"{r['sharpe_ratio']:.2f}",
+                "Final Equity": f"${r['final_equity']:,.2f}",
+            }
+            for r in study["backtest_metrics"]
+        ]
+    )
+    st.dataframe(df_bt_disp, use_container_width=True, hide_index=True)
+
+    # Equity Curve Chart
+    df_ts = pd.DataFrame(study["timeseries"])
+    if not df_ts.empty:
+        fig_eq = px.line(
+            df_ts,
+            x="hour",
+            y=["eq_flow_gated", "eq_baseline", "eq_buy_hold", "eq_standalone_flow"],
+            title="90-Day Equity Curve: Flow-Gated Breakout vs. Baseline vs. Standalone Flow ($10k Start)",
+            labels={"value": "Portfolio Equity ($)", "hour": "Date (UTC)", "variable": "Strategy"},
+            color_discrete_map={
+                "eq_flow_gated": "#2ecc71",
+                "eq_baseline": "#3498db",
+                "eq_buy_hold": "#95a5a6",
+                "eq_standalone_flow": "#e74c3c",
+            },
+        )
+        fig_eq.update_layout(height=420)
+        st.plotly_chart(fig_eq, use_container_width=True)
+
+    # Flow Classification & Event Study side by side
+    st_c1, st_c2 = st.columns(2)
+    with st_c1:
+        df_flow_pie = pd.DataFrame(
+            [
+                {"Category": k, "Tx Count": v["tx_count"], "Volume (XRP)": v["total_xrp"]}
+                for k, v in study["flow_summary"].items()
+            ]
+        )
+        fig_fpie = px.pie(
+            df_flow_pie,
+            names="Category",
+            values="Volume (XRP)",
+            hole=0.45,
+            title="90-Day Whale Volume Breakdown (Why Raw Transfers Are 80% Noise)",
+            color="Category",
+            color_discrete_map={
+                "INTERNAL_NOISE": "#7f8c8d",
+                "WHALE_TRANSFER": "#95a5a6",
+                "EXCHANGE_INFLOW": "#e74c3c",
+                "EXCHANGE_OUTFLOW": "#2ecc71",
+            },
+        )
+        fig_fpie.update_layout(height=400)
+        st.plotly_chart(fig_fpie, use_container_width=True)
+
+    with st_c2:
+        df_ev = pd.DataFrame(study["event_study"])
+        fig_ev = px.bar(
+            df_ev,
+            x="regime",
+            y=["avg_4h_ret_pct", "avg_12h_ret_pct", "avg_24h_ret_pct"],
+            barmode="group",
+            title="Event Study: Avg Forward XRP/USD Return (%) by 24H Net Flow Regime",
+            labels={"value": "Forward Return (%)", "regime": "24H Flow Regime", "variable": "Horizon"},
+        )
+        fig_ev.update_layout(height=400, xaxis_tickangle=-25)
+        st.plotly_chart(fig_ev, use_container_width=True)
+
+    if not df_ts.empty:
+        fig_z = px.bar(
+            df_ts.iloc[::4],
+            x="hour",
+            y="net_flow_24h",
+            color="net_flow_z",
+            color_continuous_scale="RdYlGn",
+            title="Rolling 24-Hour Net Exchange Flow (Outflows minus Inflows in XRP)",
+            labels={"net_flow_24h": "24H Net Flow (XRP)", "hour": "Date (UTC)", "net_flow_z": "Z-Score"},
+        )
+        fig_z.update_layout(height=360)
+        st.plotly_chart(fig_z, use_container_width=True)
+
+    st.markdown("##### Recent Classified Whale Payments ($\ge 1,000,000\text{ XRP}$)")
+    if study.get("recent_transactions"):
+        df_rtx = pd.DataFrame(study["recent_transactions"])
+        df_rtx_disp = pd.DataFrame(
+            [
+                {
+                    "Timestamp (UTC)": str(r["timestamp"])[:19].replace("T", " "),
+                    "Classification": r["flow_type"],
+                    "Amount (XRP)": f"{r['xrp']:,.2f}",
+                    "Sender": f"{r['source_entity']} ({r['account'][:10]}...)",
+                    "Receiver": f"{r['dest_entity']} ({r['destination'][:10]}...)",
+                    "Dest Tag": str(r["destination_tag"]) if r.get("destination_tag") is not None else "-",
+                    "Tx Hash": r["hash"],
+                }
+                for r in study["recent_transactions"]
+            ]
+        )
+        st.dataframe(df_rtx_disp, use_container_width=True, hide_index=True)

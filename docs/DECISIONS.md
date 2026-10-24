@@ -11,6 +11,7 @@ This document serves as the historical ledger of all architectural, data-enginee
 3. [ADR-003: Canonical Drops-to-XRP Normalization, Inclusive Percentile Ranking & Escrow/Entity Attribution](#adr-003-canonical-drops-to-xrp-normalization-inclusive-percentile-ranking--escrowentity-attribution)
 4. [ADR-004: Interactive Wallet Wealth Percentile & Next-Tier Progression Engine](#adr-004-interactive-wallet-wealth-percentile--next-tier-progression-engine)
 5. [ADR-005: Internal Network Streamlit Dashboard & Persistent User Systemd Service (`rippled-dashboard.service` on Port `8502`)](#adr-005-internal-network-streamlit-dashboard--persistent-user-systemd-service-rippled-dashboardservice-on-port-8502)
+6. [ADR-006: 90-Day Whale Flow Event Study & On-Chain Veto Gate Backtest (`src/whale_flow_study.py`)](#adr-006-90-day-whale-flow-event-study--on-chain-veto-gate-backtest-srcwhale_flow_studypy)
 
 ---
 
@@ -71,4 +72,19 @@ This document serves as the historical ledger of all architectural, data-enginee
   1. Build [`src/dashboard.py`](file:///home/simon/Code/Personal/rippled-data/src/dashboard.py) using Streamlit and Plotly with 5-minute caching on global ledger telemetry (`@st.cache_data(ttl=300)`) and 60-second caching on individual wallet lookups (`@st.cache_data(ttl=60)`).
   2. Include interactive visualizations for wallet vs. Rich-List threshold ladders (log-scale), active wallet escrow unlock schedules, global balance range inequality (`% of Wallets` vs. `% of Liquid XRP`), 100B XRP supply donut charts, cumulative whale concentration curves (`Top 10` to `Top 10,000`), and entity holdings stacked bar/treemap charts.
   3. Provision a dedicated Python virtual environment (`.venv`) and deploy [`rippled-dashboard.service`](file:///home/simon/Code/Personal/rippled-data/rippled-dashboard.service) under `~/.config/systemd/user/rippled-dashboard.service` bound to `0.0.0.0:8502` with `Restart=on-failure`.
-* **Consequences:** TheXRPL Rich-List & Wallet Analytics dashboard is continuously available at `http://localhost:8502` and `http://192.168.0.4:8502` without colliding with `tradesies` on port `8501`.
+* **Consequences:** The XRPL Rich-List & Wallet Analytics dashboard is continuously available at `http://localhost:8502` and `http://192.168.0.4:8502` without colliding with `tradesies` on port `8501`.
+
+---
+
+### ADR-006: 90-Day Whale Flow Event Study & On-Chain Veto Gate Backtest (`src/whale_flow_study.py`)
+* **Date:** 2026-10-24
+* **Status:** Accepted & Implemented
+* **Context:** We evaluated whether tracking large on-chain XRPL `Payment` transactions ($\ge 1,000,000\text{ XRP}$) could generate profitable trading signals for `XRP/USD`, and whether the Phase 1 historical research should live in `rippled-data` or `tradesies`.
+* **Decision:**
+  1. **Keep Phase 1 On-Chain Research in `rippled-data`**: `rippled-data` serves as the XRPL on-chain research lab, keeping the production `tradesies` execution engine clean until a signal proves statistical edge.
+  2. **Implement 90-Day Ledger-Wide Whale SQL Ingestion ([`src/whale_flow_study.py`](file:///home/simon/Code/Personal/rippled-data/src/whale_flow_study.py))**: Query XRPSCAN's Elasticsearch SQL endpoint (`https://console.xrpscan.com/api/v1/sql`) across 3-day concurrent slices to pull all `5,925` validated `Payment` transactions $\ge 1,000,000\text{ XRP}$ (`25.74 Billion XRP` total volume) over the last 90 days alongside `2,160` 1-Hour `XRP/USD` OHLCV bars.
+  3. **Empirical Findings (90-Day Study)**:
+     - **80.25% of Whale Volume is Non-Directional Noise**: `49.92%` (`12.85B XRP`) was internal exchange/Ripple shuffling (`INTERNAL_NOISE`) and `30.33%` (`7.81B XRP`) was unlabeled wallet-to-wallet custody transfers (`WHALE_TRANSFER`). Only `12.42%` (`3.20B XRP`) was true `EXCHANGE_INFLOW` and `7.33%` (`1.89B XRP`) was true `EXCHANGE_OUTFLOW`.
+     - **Standalone Whale-Flow Trading Loses Money**: Buying purely on extreme 24H Net Outflow spikes ($Z > +1.5$) without price action returned **`-1.89%`** (`Profit Factor: 0.87`, `Sharpe: -0.17`) vs. **`+16.88%`** Buy & Hold, because large exchange withdrawals frequently lag behind rallies.
+     - **Heavy Exchange Inflow Veto Gate Adds Real Alpha (`+6.00%` over Baseline)**: During `Heavy Exchange Inflow` hours ($Z_{24\text{h}} < -1.5$), forward 24H `XRP/USD` returns averaged **`-0.82%`** with only a **`38.3%`** positive rate (`61.7%` bearish rate). Using 24H Net Exchange Flow as a **veto gate** on a 1H technical breakout strategy (blocking long breakouts when whales are actively depositing onto exchanges, $Z_{24\text{h}} < -0.75$) improved 90-day net return from **`+25.93%` $\rightarrow$ `+31.93%`**, Win Rate from **`28.0%` $\rightarrow$ `33.3%`**, Profit Factor from **`1.92` $\rightarrow$ `2.35`**, and Sharpe Ratio from **`2.00` $\rightarrow$ `2.48`**.
+* **Consequences:** Proves empirically that on-chain XRPL flows should **never** be traded as standalone triggers, but **can** be used effectively as a bearish inflow veto gate (`Z < -0.75`) layered on top of price-action strategies. Added the interactive `🧪 90-Day Whale Flow & Backtest` tab to [`src/dashboard.py`](file:///home/simon/Code/Personal/rippled-data/src/dashboard.py).

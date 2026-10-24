@@ -15,6 +15,7 @@ For architectural background and design rationale, see the [Architecture Decisio
 - **Rich-List Percentile Brackets**: Exact account counts and XRP balance ranges across the 10 classic tiers (`Top 0.01%` / `100% - 99.99%` down to `Top 10%` / `95% - 90%`).
 - **Whale Concentration & Balance Tiers**: Supply concentration across the `Top 10` to `Top 10,000` accounts and full ledger distribution across 18 XRP balance tiers (`1B+ XRP` down to `0 - 20 XRP`).
 - **Entity & Top Holder Attribution**: Ranks top accounts and aggregates known institutional/exchange entities (`Ripple`, `UPbit`, `Coinbase`, `Binance`, `Robinhood`, `Bithumb`, `Uphold`, `Kraken`, etc.) across both **Liquid XRP** and **Escrowed XRP**.
+- **90-Day Whale Flow Event Study & Strategy Backtest ([`src/whale_flow_study.py`](file:///home/simon/Code/Personal/rippled-data/src/whale_flow_study.py))**: Pulls 90 days of ledger-wide `Payment >= 1,000,000 XRP` transactions via XRPSCAN's SQL API alongside 1H `XRP/USD` OHLCV candles, separates internal custody noise from true exchange inflows/outflows, and evaluates both forward return regimes and a 3-way strategy backtest (Baseline Breakout vs. On-Chain Flow-Gated Breakout vs. Standalone Flow).
 
 ---
 
@@ -77,6 +78,9 @@ Options:
 
 # Re-run analysis offline from a saved snapshot
 .venv/bin/python src/xrpl_analytics.py --from-file data/ledger_107855218_snapshot.json
+
+# Run the 90-day XRPL whale transaction event study & strategy backtest
+.venv/bin/python src/whale_flow_study.py --days 90 --min-xrp 1000000
 ```
 
 ---

@@ -6,6 +6,11 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from xrpl_analytics import build_analytics, drops_to_xrp, format_report
+from whale_flow_study import (
+    classify_entity_role,
+    classify_whale_payment,
+    run_90d_study_and_backtest,
+)
 
 
 class TestXrplAnalytics(unittest.TestCase):
@@ -125,6 +130,65 @@ class TestXrplAnalytics(unittest.TestCase):
         self.assertIn("Top 100% - 99.99% (Top 0.01%)", report)
         self.assertIn("rRippleEscrow1", report)
         self.assertIn("Bithumb", report)
+
+    def test_whale_flow_classification_and_backtest(self) -> None:
+        self.assertEqual(classify_entity_role("Binance"), "EXCHANGE")
+        self.assertEqual(classify_entity_role("Ripple"), "RIPPLE")
+        self.assertEqual(classify_entity_role("Unlabeled"), "UNLABELED")
+
+        self.assertEqual(
+            classify_whale_payment("UNLABELED", "EXCHANGE", "Unlabeled", "Binance", True),
+            "EXCHANGE_INFLOW",
+        )
+        self.assertEqual(
+            classify_whale_payment("EXCHANGE", "UNLABELED", "Coinbase", "Unlabeled", False),
+            "EXCHANGE_OUTFLOW",
+        )
+        self.assertEqual(
+            classify_whale_payment("EXCHANGE", "EXCHANGE", "Binance", "Binance", False),
+            "INTERNAL_NOISE",
+        )
+
+        # Synthetic 48-hour dataset for backtest smoke test
+        bars = [
+            {
+                "timestamp": f"2026-10-01T{h:02d}:00:00+00:00",
+                "open": 1.0 + h * 0.01,
+                "high": 1.01 + h * 0.01,
+                "low": 0.99 + h * 0.01,
+                "close": 1.0 + h * 0.01,
+                "volume": 100000.0,
+            }
+            for h in range(24)
+        ] + [
+            {
+                "timestamp": f"2026-10-02T{h:02d}:00:00+00:00",
+                "open": 1.24 + h * 0.01,
+                "high": 1.25 + h * 0.01,
+                "low": 1.23 + h * 0.01,
+                "close": 1.24 + h * 0.01,
+                "volume": 100000.0,
+            }
+            for h in range(24)
+        ]
+        txs = [
+            {
+                "timestamp": "2026-10-01T05:00:00.000Z",
+                "account": "rWhale1",
+                "source_entity": "Unlabeled",
+                "source_role": "UNLABELED",
+                "destination": "rBinance",
+                "dest_entity": "Binance",
+                "dest_role": "EXCHANGE",
+                "destination_tag": 123,
+                "xrp": 5_000_000.0,
+                "flow_type": "EXCHANGE_INFLOW",
+                "hash": "H1",
+            }
+        ]
+        res = run_90d_study_and_backtest({"transactions": txs, "ohlcv_1h": bars})
+        self.assertEqual(res["total_tx_count"], 1)
+        self.assertEqual(len(res["backtest_metrics"]), 3)
 
 
 if __name__ == "__main__":
